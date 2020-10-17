@@ -33,21 +33,19 @@ defmodule StockExchange.InstrumentProcessor do
     {:reply, {:ok, buys, sells}, state}
   end
 
-  def handle_call({:buy, price, quantity}, _from, state) do
-    %State{buys: buys} = state
+  def handle_call({:buy, price, quantity}, _from, state = %State{buys: buys}) do
     new_buys = [%Buy{price: price, quantity: quantity} | buys]
-    {:reply, :ok, %State{state | buys: new_buys}}
+    {:reply, :ok, %State{
+      state | buys: Enum.sort_by(new_buys, &(&1.price)) |> Enum.reverse()
+    }}
   end
 
-  def handle_call({:sell, price, quantity}, _from, state) do
-    %State{sells: sells} = state
+  def handle_call({:sell, price, quantity}, _from, state = %State{sells: sells}) do
     new_sells = [%Sell{price: price, quantity: quantity} | sells]
-    {:reply, :ok, %State{state | sells: new_sells}}
+    {:reply, :ok, %State{state | sells: Enum.sort_by(new_sells, &(&1.price))}}
   end
 
-  def handle_call(:price, _from, state) do
-    %State{sells: sells} = state
-    [lowest_priced_order | _t] = Enum.sort_by(sells, &(&1.price))
-    {:reply, {:ok, lowest_priced_order.price}, state}
+  def handle_call(:price, _from, state = %State{sells: [lowest | _t]}) do
+    {:reply, {:ok, lowest.price}, state}
   end
 end
