@@ -1,7 +1,7 @@
 defmodule StockExchange.InstrumentProcessorTest do
   use ExUnit.Case
   alias StockExchange.InstrumentProcessor
-  alias StockExchange.InstrumentProcessor.{Buy, Sell}
+  alias StockExchange.Orders.{Buy, Sell}
 
   setup do
     {:ok, pid} = InstrumentProcessor.start_link("AAPL")

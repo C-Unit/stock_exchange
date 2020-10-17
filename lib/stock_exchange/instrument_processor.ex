@@ -1,7 +1,7 @@
 defmodule StockExchange.InstrumentProcessor do
   defmodule State, do: defstruct instrument: nil, buys: [], sells: []
-  defmodule Buy, do: defstruct [:price, :quantity]
-  defmodule Sell, do: defstruct [:price, :quantity]
+  alias StockExchange.Orders.{Buy, Sell}
+
   use GenServer
 
   def start_link(instrument) do
