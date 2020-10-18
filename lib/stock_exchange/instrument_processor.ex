@@ -1,6 +1,7 @@
 defmodule StockExchange.InstrumentProcessor do
   defmodule State, do: defstruct instrument: nil, buys: [], sells: []
   alias StockExchange.Orders.{Buy, Sell}
+  alias StockExchange.{Execution, Transaction}
 
   use GenServer
 
@@ -33,19 +34,53 @@ defmodule StockExchange.InstrumentProcessor do
     {:reply, {:ok, buys, sells}, state}
   end
 
-  def handle_call({:buy, price, quantity}, _from, state = %State{buys: buys}) do
-    new_buys = [%Buy{price: price, quantity: quantity} | buys]
-    {:reply, :ok, %State{
-      state | buys: Enum.sort_by(new_buys, &(&1.price)) |> Enum.reverse()
-    }}
+  def handle_call({:buy, price, quantity}, _from, state = %State{buys: buys, sells: sells}) do
+    buy = %Buy{price: price, quantity: quantity}
+    new_buys = [buy | buys]
+      |> Enum.sort_by(&(&1.price))
+      |> Enum.reverse()
+
+    IO.inspect(["new_buys", new_buys])
+    IO.inspect(["sells", sells])
+    IO.inspect(["buy", buy])
+    case executions(new_buys, sells, %Execution{trigger: buy}) do
+      {^new_buys, ^sells, _} ->
+        {:reply, :ok, %State{state | sells: sells, buys: new_buys}}
+      {executed_buys, executed_sells, execution} ->
+        {:reply, {:ok, execution}, %State{state | sells: executed_sells, buys: executed_buys}}
+    end
   end
 
-  def handle_call({:sell, price, quantity}, _from, state = %State{sells: sells}) do
-    new_sells = [%Sell{price: price, quantity: quantity} | sells]
-    {:reply, :ok, %State{state | sells: Enum.sort_by(new_sells, &(&1.price))}}
+  def handle_call({:sell, price, quantity}, _from, state = %State{sells: sells, buys: buys}) do
+    sell = %Sell{price: price, quantity: quantity}
+    new_sells = Enum.sort_by([sell | sells], &(&1.price))
+
+    case executions(buys, new_sells, %Execution{trigger: sell}) do
+      {^buys, ^new_sells, _} ->
+        {:reply, :ok, %State{state | sells: new_sells, buys: buys}}
+      {executed_buys, executed_sells, execution} ->
+        {:reply, {:ok, execution}, %State{state | sells: executed_sells, buys: executed_buys}}
+    end
   end
 
   def handle_call(:price, _from, state = %State{sells: [lowest | _t]}) do
     {:reply, {:ok, lowest.price}, state}
   end
+
+  defp executions(buys, sells, execution)
+  defp executions(
+    [highest_buy = %Buy{price: bid, quantity: buy_qty} | buys_tail],
+    [lowest_sell = %Sell{price: ask, quantity: sell_qty} | sells_tail],
+    execution
+    ) when bid >= ask and sell_qty == buy_qty do
+    # crossed the spread, equal quantity order available
+
+    executions(buys_tail, sells_tail, %Execution{execution | transactions: [%Transaction{buy: highest_buy, sell: lowest_sell} | execution.transactions]})
+  end
+  # TODO: crossed the spread, multiple sells needed to fill buy
+  # TODO: crossed the spread, multiple buys fullfilled by sell
+  # TODO: crossed the spread, partial sell needed to fill buy
+  # TODO: crossed the spread, partial buy needed to fill sell
+  # base case
+  defp executions(buys, sells, execution), do: {buys, sells, execution}
 end
