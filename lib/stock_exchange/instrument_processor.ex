@@ -40,12 +40,9 @@ defmodule StockExchange.InstrumentProcessor do
       |> Enum.sort_by(&(&1.price))
       |> Enum.reverse()
 
-    IO.inspect(["new_buys", new_buys])
-    IO.inspect(["sells", sells])
-    IO.inspect(["buy", buy])
     case executions(new_buys, sells, %Execution{trigger: buy}) do
       {^new_buys, ^sells, _} ->
-        {:reply, :ok, %State{state | sells: sells, buys: new_buys}}
+        {:reply, :ok, %State{state | buys: new_buys}}
       {executed_buys, executed_sells, execution} ->
         {:reply, {:ok, execution}, %State{state | sells: executed_sells, buys: executed_buys}}
     end
@@ -73,6 +70,15 @@ defmodule StockExchange.InstrumentProcessor do
     [lowest_sell = %Sell{price: ask, quantity: sell_qty} | sells_tail],
     execution
     ) when bid >= ask and sell_qty == buy_qty do
+    # crossed the spread, equal quantity order available
+
+    executions(buys_tail, sells_tail, %Execution{execution | transactions: [%Transaction{buy: highest_buy, sell: lowest_sell} | execution.transactions]})
+  end
+  defp executions(
+    [highest_buy = %Buy{price: bid, quantity: buy_qty} | buys_tail],
+    [lowest_sell = %Sell{price: ask, quantity: sell_qty} | sells_tail],
+    execution
+    ) when bid >= ask and buy_qty > sell_qty do
     # crossed the spread, equal quantity order available
 
     executions(buys_tail, sells_tail, %Execution{execution | transactions: [%Transaction{buy: highest_buy, sell: lowest_sell} | execution.transactions]})
