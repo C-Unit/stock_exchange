@@ -69,7 +69,6 @@ defmodule StockExchange.InstrumentProcessor do
     [lowest_sell = %Sell{price: ask, quantity: sell_qty} | sells_tail],
     execution
     ) when bid >= ask and sell_qty == buy_qty do
-    # crossed the spread, equal quantity order available
 
     executions(buys_tail, sells_tail, %Execution{execution | transactions: [%Transaction{
       buy: %Buy{highest_buy | filled: buy_qty},
@@ -81,7 +80,6 @@ defmodule StockExchange.InstrumentProcessor do
     [lowest_sell = %Sell{price: ask, quantity: sell_qty} | sells_tail],
     execution
     ) when bid >= ask and sell_qty < buy_qty do
-    # crossed the spread
     partial_buy = %Buy{highest_buy | filled: sell_qty + highest_buy.filled}
 
     executions([partial_buy | buys_tail], sells_tail, %Execution{execution | transactions: [%Transaction{
@@ -94,7 +92,6 @@ defmodule StockExchange.InstrumentProcessor do
     [lowest_sell = %Sell{price: ask, quantity: sell_qty} | sells_tail],
     execution
     ) when bid >= ask and sell_qty > buy_qty do
-    # crossed the spread
     partial_sell = %Sell{lowest_sell | filled: buy_qty + lowest_sell.filled}
 
     executions(buys_tail, [partial_sell | sells_tail], %Execution{execution | transactions: [%Transaction{
@@ -102,10 +99,6 @@ defmodule StockExchange.InstrumentProcessor do
       sell: partial_sell
     } | execution.transactions]})
   end
-  # TODO: crossed the spread, multiple sells needed to fill buy
-  # TODO: crossed the spread, multiple buys fullfilled by sell
-  # TODO: crossed the spread, partial sell needed to fill buy
-  # TODO: crossed the spread, partial buy needed to fill sell
   # base case
   defp executions(buys, sells, execution), do: {buys, sells, execution}
 end
