@@ -64,7 +64,6 @@ defmodule StockExchange.InstrumentProcessor do
     {:reply, {:ok, lowest.price}, state}
   end
 
-  defp executions(buys, sells, execution)
   defp executions(
     [highest_buy = %Buy{price: bid, quantity: buy_qty} | buys_tail],
     [lowest_sell = %Sell{price: ask, quantity: sell_qty} | sells_tail],
@@ -72,16 +71,10 @@ defmodule StockExchange.InstrumentProcessor do
     ) when bid >= ask and sell_qty == buy_qty do
     # crossed the spread, equal quantity order available
 
-    executions(buys_tail, sells_tail, %Execution{execution | transactions: [%Transaction{buy: highest_buy, sell: lowest_sell} | execution.transactions]})
-  end
-  defp executions(
-    [highest_buy = %Buy{price: bid, quantity: buy_qty} | buys_tail],
-    [lowest_sell = %Sell{price: ask, quantity: sell_qty} | sells_tail],
-    execution
-    ) when bid >= ask and buy_qty > sell_qty do
-    # crossed the spread, equal quantity order available
-
-    executions(buys_tail, sells_tail, %Execution{execution | transactions: [%Transaction{buy: highest_buy, sell: lowest_sell} | execution.transactions]})
+    executions(buys_tail, sells_tail, %Execution{execution | transactions: [%Transaction{
+      buy: %Buy{highest_buy | filled: 1},
+      sell: %Sell{lowest_sell | filled: 1}
+    } | execution.transactions]})
   end
   # TODO: crossed the spread, multiple sells needed to fill buy
   # TODO: crossed the spread, multiple buys fullfilled by sell

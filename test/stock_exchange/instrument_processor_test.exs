@@ -18,13 +18,13 @@ defmodule StockExchange.InstrumentProcessorTest do
   test "accepts buy limit orders", %{pid: pid} = _context do
     assert :ok = InstrumentProcessor.buy(pid, 2, 100)
     {:ok, buys, _sells} = InstrumentProcessor.books(pid)
-    assert [%Buy{price: 2, quantity: 100}] = buys
+    assert [%Buy{price: 2, quantity: 100, filled: 0}] = buys
   end
 
   test "accepts sell limit orders", %{pid: pid} = _context do
     assert :ok = InstrumentProcessor.sell(pid, 1, 50)
     {:ok, _buys, sells} = InstrumentProcessor.books(pid)
-    assert [%Sell{price: 1, quantity: 50}] = sells
+    assert [%Sell{price: 1, quantity: 50, filled: 0}] = sells
   end
 
   test "determines price", %{pid: pid} do
@@ -42,22 +42,10 @@ defmodule StockExchange.InstrumentProcessorTest do
     assert {:ok, %Execution{
       transactions: [
         %Transaction{
-          buy: %Buy{quantity: 1, price: 130},
-          sell: %Sell{quantity: 1, price: 120}
+          buy: %Buy{quantity: 1, price: 130, filled: 1},
+          sell: %Sell{quantity: 1, price: 120, filled: 1},
         }
       ]}} = InstrumentProcessor.buy(pid, 130, 1)
-  end
-
-  test "returns execution when selling if order is executed", %{pid: pid} do
-    :ok = InstrumentProcessor.buy(pid, 120, 6)
-    :ok = InstrumentProcessor.buy(pid, 135, 1)
-    assert {:ok, %Execution{
-      transactions: [
-        %Transaction{
-          buy: %Buy{quantity: 1, price: 135},
-          sell: %Sell{quantity: 1, price: 130}
-        }
-      ]}} = InstrumentProcessor.sell(pid, 130, 1)
   end
 
   test "returns executions when buying if order is executed, and multiple sells were required for full execution", %{pid: pid} do
