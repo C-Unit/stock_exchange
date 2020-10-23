@@ -86,23 +86,24 @@ defmodule StockExchange.InstrumentProcessorTest do
   end
 
   test "multiple sells required to fill buy", %{pid: pid} do
-    :ok = InstrumentProcessor.sell(pid, 100, 5)
-    :ok = InstrumentProcessor.sell(pid, 99, 10)
     :ok = InstrumentProcessor.sell(pid, 98, 10)
+    :ok = InstrumentProcessor.sell(pid, 99, 10)
+    :ok = InstrumentProcessor.sell(pid, 100, 5)
 
     assert {:ok, %Execution{
       transactions: transactions }} = InstrumentProcessor.buy(pid, 100, 25)
+    assert length(transactions) == 3
     assert %Transaction{
-      buy: %Buy{quantity: 25, price: 100, filled: 5},
-      sell: %Sell{quantity: 5, price: 100, filled: 5}
+      buy: %Buy{price: 100, quantity: 25, filled: 10},
+      sell: %Sell{price: 98, quantity: 10, filled: 10}
     } in transactions
     assert %Transaction{
-      buy: %Buy{quantity: 25, price: 100, filled: 15},
-      sell: %Sell{quantity: 99, price: 100, filled: 10}
+      buy: %Buy{price: 100, quantity: 25, filled: 20},
+      sell: %Sell{price: 99, quantity: 10, filled: 10}
     } in transactions
     assert %Transaction{
-      buy: %Buy{quantity: 25, price: 100, filled: 25},
-      sell: %Sell{quantity: 98, price: 10, filled: 10}
+      buy: %Buy{price: 100, quantity: 25, filled: 25},
+      sell: %Sell{price: 100, quantity: 5, filled: 5}
     } in transactions
   end
 
@@ -112,12 +113,12 @@ defmodule StockExchange.InstrumentProcessorTest do
       transactions: transactions }} = InstrumentProcessor.sell(pid, 100, 10)
 
     assert %Transaction{
-      buy: %Buy{quantity: 20, price: 100, filled: 10},
-      sell: %Sell{quantity: 10, price: 100, filled: 10}
+      buy: %Buy{price: 100, quantity: 20, filled: 10},
+      sell: %Sell{price: 100, quantity: 10, filled: 10}
     } in transactions
 
     {:ok, buys, _sells} = InstrumentProcessor.books(pid)
-    assert %Buy{price: 100, quantity: 10, filled: 10} in buys
+    assert %Buy{price: 100, quantity: 20, filled: 10} in buys
   end
 
   test "partial execution of sells", %{pid: pid} do
@@ -126,12 +127,12 @@ defmodule StockExchange.InstrumentProcessorTest do
       transactions: transactions }} = InstrumentProcessor.buy(pid, 50, 5)
 
     assert %Transaction{
-      buy: %Buy{quantity: 5, price: 50, filled: 5},
-      sell: %Sell{quantity: 1000, price: 50, filled: 5}
+      buy: %Buy{price: 50, quantity: 5, filled: 5},
+      sell: %Sell{price: 50, quantity: 1000, filled: 5}
     } in transactions
 
     {:ok, _buys, sells} = InstrumentProcessor.books(pid)
-    assert %Sell{price: 50, quantity: 995, filled: 5} in sells
+    assert %Sell{price: 50, quantity: 1000, filled: 5} in sells
   end
 
 end
