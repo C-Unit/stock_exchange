@@ -16,29 +16,29 @@ defmodule StockExchange.InstrumentProcessorTest do
   end
 
   test "accepts buy limit orders", %{pid: pid} = _context do
-    assert :ok = InstrumentProcessor.buy(pid, 2, 100)
+    assert {:ok, _buy} = InstrumentProcessor.buy(pid, 2, 100)
     {:ok, buys, _sells} = InstrumentProcessor.books(pid)
     assert [%Buy{price: 2, quantity: 100, filled: 0}] = buys
   end
 
   test "accepts sell limit orders", %{pid: pid} = _context do
-    assert :ok = InstrumentProcessor.sell(pid, 1, 50)
+    assert {:ok, _sell} = InstrumentProcessor.sell(pid, 1, 50)
     {:ok, _buys, sells} = InstrumentProcessor.books(pid)
     assert [%Sell{price: 1, quantity: 50, filled: 0}] = sells
   end
 
   test "determines price", %{pid: pid} do
-    :ok = InstrumentProcessor.sell(pid, 50, 1)
-    :ok = InstrumentProcessor.sell(pid, 60, 1)
-    :ok = InstrumentProcessor.sell(pid, 30, 1)
-    :ok = InstrumentProcessor.sell(pid, 45, 1)
+    {:ok, _sell} = InstrumentProcessor.sell(pid, 50, 1)
+    {:ok, _sell} = InstrumentProcessor.sell(pid, 60, 1)
+    {:ok, _sell} = InstrumentProcessor.sell(pid, 30, 1)
+    {:ok, _sell} = InstrumentProcessor.sell(pid, 45, 1)
 
     assert {:ok, 30} = InstrumentProcessor.price(pid)
   end
 
   test "returns execution when buying if order is executed", %{pid: pid} do
-    :ok = InstrumentProcessor.sell(pid, 120, 1)
-    :ok = InstrumentProcessor.sell(pid, 130, 1)
+    {:ok, _sell} = InstrumentProcessor.sell(pid, 120, 1)
+    {:ok, _sell} = InstrumentProcessor.sell(pid, 130, 1)
     assert {:ok, %Execution{
       transactions: [
         %Transaction{
@@ -49,9 +49,9 @@ defmodule StockExchange.InstrumentProcessorTest do
   end
 
   test "returns executions when buying if order is executed, and multiple sells were required for full execution", %{pid: pid} do
-    :ok = InstrumentProcessor.sell(pid, 100, 5)
-    :ok = InstrumentProcessor.sell(pid, 100, 2)
-    :ok = InstrumentProcessor.sell(pid, 100, 5)
+    {:ok, _sell} = InstrumentProcessor.sell(pid, 100, 5)
+    {:ok, _sell} = InstrumentProcessor.sell(pid, 100, 2)
+    {:ok, _sell} = InstrumentProcessor.sell(pid, 100, 5)
     assert {:ok, %Execution{
       transactions: transactions }} = InstrumentProcessor.buy(pid, 100, 12)
 
@@ -70,8 +70,8 @@ defmodule StockExchange.InstrumentProcessorTest do
   end
 
   test "returns executions when selling if order is executed, and multiple buy were required for full execution", %{pid: pid} do
-    :ok = InstrumentProcessor.buy(pid, 100, 10)
-    :ok = InstrumentProcessor.buy(pid, 96, 5)
+    {:ok, _buy} = InstrumentProcessor.buy(pid, 100, 10)
+    {:ok, _buy} = InstrumentProcessor.buy(pid, 96, 5)
     assert {:ok, %Execution{
       transactions: transactions }} = InstrumentProcessor.sell(pid, 90, 15)
 
@@ -86,9 +86,9 @@ defmodule StockExchange.InstrumentProcessorTest do
   end
 
   test "multiple sells required to fill buy", %{pid: pid} do
-    :ok = InstrumentProcessor.sell(pid, 98, 10)
-    :ok = InstrumentProcessor.sell(pid, 99, 10)
-    :ok = InstrumentProcessor.sell(pid, 100, 5)
+    {:ok, _sell} = InstrumentProcessor.sell(pid, 98, 10)
+    {:ok, _sell} = InstrumentProcessor.sell(pid, 99, 10)
+    {:ok, _sell} = InstrumentProcessor.sell(pid, 100, 5)
 
     assert {:ok, %Execution{
       transactions: transactions }} = InstrumentProcessor.buy(pid, 100, 25)
@@ -108,7 +108,7 @@ defmodule StockExchange.InstrumentProcessorTest do
   end
 
   test "partial execution of buys", %{pid: pid} do
-    :ok = InstrumentProcessor.buy(pid, 100, 20)
+    {:ok, _buy} = InstrumentProcessor.buy(pid, 100, 20)
     assert {:ok, %Execution{
       transactions: transactions }} = InstrumentProcessor.sell(pid, 100, 10)
 
@@ -122,7 +122,7 @@ defmodule StockExchange.InstrumentProcessorTest do
   end
 
   test "partial execution of sells", %{pid: pid} do
-    :ok = InstrumentProcessor.sell(pid, 50, 1000)
+    {:ok, _sell} = InstrumentProcessor.sell(pid, 50, 1000)
     assert {:ok, %Execution{
       transactions: transactions }} = InstrumentProcessor.buy(pid, 50, 5)
 
@@ -135,4 +135,12 @@ defmodule StockExchange.InstrumentProcessorTest do
     assert %Sell{price: 50, quantity: 1000, filled: 5} in sells
   end
 
+  test "cancels orders", %{pid: pid} do
+    assert {:ok, buy} = InstrumentProcessor.buy(pid, 2, 100)
+    assert {:ok, [^buy], _sells} = InstrumentProcessor.books(pid)
+
+    assert :ok = InstrumentProcessor.cancel(pid, buy)
+    {:ok, buys, _sells} = InstrumentProcessor.books(pid)
+    assert buy not in buys
+  end
 end
