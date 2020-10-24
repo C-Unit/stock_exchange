@@ -21,7 +21,7 @@ defmodule StockExchange.InstrumentProcessor do
   end
 
   def cancel(pid, order) do
-    GenServer.call(pid, {:cancel, order})
+    GenServer.call(pid, {:cancel, order.id})
   end
 
   def price(pid) do
@@ -39,7 +39,7 @@ defmodule StockExchange.InstrumentProcessor do
   end
 
   def handle_call({:buy, price, quantity}, _from, state = %State{buys: buys, sells: sells}) do
-    buy = %Buy{price: price, quantity: quantity}
+    buy = %Buy{id: make_ref(), price: price, quantity: quantity}
     new_buys = [buy | buys]
       |> Enum.sort_by(&(&1.price))
       |> Enum.reverse()
@@ -53,7 +53,7 @@ defmodule StockExchange.InstrumentProcessor do
   end
 
   def handle_call({:sell, price, quantity}, _from, state = %State{sells: sells, buys: buys}) do
-    sell = %Sell{price: price, quantity: quantity}
+    sell = %Sell{id: make_ref(), price: price, quantity: quantity}
     new_sells = Enum.sort_by([sell | sells], &(&1.price))
 
     case executions(buys, new_sells, %Execution{trigger: sell}) do
@@ -64,8 +64,8 @@ defmodule StockExchange.InstrumentProcessor do
     end
   end
 
-  def handle_call({:cancel, order = %Buy{}}, _from, state = %State{buys: buys}) do
-    new_buys = Enum.reject(buys, &(&1 == order ))
+  def handle_call({:cancel, order_ref}, _from, state = %State{buys: buys}) do
+    new_buys = Enum.reject(buys, &(&1.id == order_ref ))
     {:reply, :ok, %State{state | buys: new_buys }}
   end
 
