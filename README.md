@@ -1,6 +1,6 @@
 # StockExchange
 
-**TODO: Add description**
+A toy stock exchange written in Elixir. Only supports buy and sell orders. Orders are processed as FIFO.
 
 ## Installation
 
